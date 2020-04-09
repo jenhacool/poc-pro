@@ -67,7 +67,7 @@ class POC_Pro_API
 
     protected function parse_response( $response )
     {
-        if( is_wp_error( $response ) ) {
+        if( is_wp_error( $response ) || ! isset( $response['body'] ) ) {
             return null;
         }
 
