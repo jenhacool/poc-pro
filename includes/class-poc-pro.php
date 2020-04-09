@@ -8,6 +8,10 @@ class POC_PRO
 
     protected $plugin_manager;
 
+    protected $plugin_info;
+
+    protected $plugin_slug = 'poc-pro';
+
     protected $api;
 
     public static function instance() {
@@ -33,6 +37,7 @@ class POC_PRO
         $this->define( 'POC_PRO_ABSPATH', dirname( POC_PRO_PLUGIN_FILE ) . '/' );
         $this->define( 'POC_PRO_PLUGIN_URL', untrailingslashit( plugins_url( '/', POC_PRO_PLUGIN_FILE ) ) );
         $this->define( 'POC_PRO_PLUGIN_VERSION', $this->version );
+        $this->define( 'POC_PRO_PLUGIN_BASENAME', plugin_basename( POC_PRO_PLUGIN_FILE ) );
     }
 
     private function includes()
@@ -48,10 +53,79 @@ class POC_PRO
         add_action( 'plugins_loaded', array( $this, 'on_plugins_loaded' ) );
         add_filter( 'get_avatar', array( $this, 'get_custom_avatar' ), 10, 5 );
         add_action( 'admin_init', array( $this, 'on_admin_init' ) );
+        add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'check_version' ) );
+        add_filter( 'plugins_api', array( $this, 'set_plugin_info' ), 10, 3 );
+    }
+
+    public function check_version( $transient )
+    {
+        if( ! isset( $transient->response ) ) {
+            return $transient;
+        }
+
+        $new_version = POC_PRO_PLUGIN_VERSION;
+
+        if( ! empty( $transient->response[POC_PRO_PLUGIN_BASENAME]->new_version ) ) {
+            $new_version = $transient->response[POC_PRO_PLUGIN_BASENAME]->new_version;
+        }
+
+        if( is_null( $this->get_plugin_info() ) ) {
+            return $transient;
+        }
+
+        if( ! version_compare( $this->plugin_info['version'], $new_version, '>' ) ) {
+            return $transient;
+        }
+
+        $obj = new stdClass();
+        $obj->slug = $this->plugin_slug;
+        $obj->new_version = $this->plugin_info['version'];
+        $obj->url = 'http://poc.foundation';
+        $obj->package = $this->plugin_info['download_link'];
+        $obj->plugin = POC_PRO_PLUGIN_BASENAME;
+
+        $transient->response[POC_PRO_PLUGIN_BASENAME] = $obj;
+
+        return $transient;
+    }
+
+    public function set_plugin_info( $result, $action, $response )
+    {
+        if( empty( $response->slug ) || $response->slug != $this->plugin_slug ) {
+            return false;
+        }
+
+//        $response->last_updated = $this->githubAPIResult->published_at;
+        $response->slug = $this->plugin_slug;
+        $response->name  = 'POC Pro';
+        $response->version = $this->get_plugin_info()['version'];
+        $response->author = 'POC Foundation';
+        $response->homepage = 'http://poc.foundation';
+
+        $response->download_link = $this->get_plugin_info()['download_link'];
+
+        $response->sections = array(
+            'description' => 'description',
+        );
+
+        return $response;
+    }
+
+    public function get_plugin_info()
+    {
+        if( ! empty( $this->plugin_info ) ) {
+            return $this->plugin_info;
+        }
+
+        return $this->plugin_info = $this->api->check_version();
     }
 
     public function on_plugins_loaded()
     {
+        if( ! is_user_logged_in() || ! current_user_can( 'manage_network' ) ) {
+            return;
+        }
+
         $this->check_required_plugins();
 
         $this->check_suggested_plugins();
@@ -131,40 +205,24 @@ class POC_PRO
 
     protected function check_plugin_version()
     {
-        $version = $this->api->check_version();
+        $transient = get_site_transient( 'update_plugins' );
 
-        if( is_null( $version ) ) {
+        if( ! isset( $transient->response ) || empty( $transient->response ) || ! isset( $transient->response[POC_PRO_PLUGIN_BASENAME] ) ) {
             return;
         }
 
-        if( version_compare( POC_PRO_PLUGIN_VERSION, $version['version'] ) != 0 ) {
-            $plugins = array(
-                array(
-                    'download_link' => $version['download_link'],
-                    'main_file_path' => 'poc-pro/poc-pro.php'
-                )
-            );
-
-            add_action( 'admin_notices', function() use ( $plugins ) {
-                ob_start(); ?>
-                <div class="error is-dismissible">
-                    <p>
-                        <strong>
-                            <?php echo __( 'POC Pro have new version. Please update to use new features' ); ?>
-                        </strong>
-                    </p>
-                    <form action="" method="POST" id="poc_pro_install_plugins_table">
-                        <?php wp_nonce_field( 'poc_pro_install_plugins', 'poc_pro_install_plugins' ); ?>
-                        <?php foreach ( $plugins as $index => $plugin ) : ?>
-                            <input type="hidden" name="<?php echo 'plugins['.$index.'][download_link]'; ?>" value="<?php echo $plugin['download_link']; ?>" />
-                            <input type="hidden" name="<?php echo 'plugins['.$index.'][main_file_path]'; ?>" value="<?php echo $plugin['main_file_path']; ?>" />
-                        <?php endforeach; ?>
-                        <p><input class="button button-primary" type="submit" value="Update"></p>
-                    </form>
-                </div>
-                <?php echo ob_get_clean();
-            });
-        }
+        add_action( 'admin_notices', function() {
+            ob_start(); ?>
+            <div class="error is-dismissible">
+                <p>
+                    <strong>
+                        <?php echo __( 'POC Pro have new version. Please update to use new features' ); ?>
+                    </strong>
+                </p>
+                <p><a href="<?php echo network_admin_url('update-core.php') ?>" class="button button-primary">Update</a></p>
+            </div>
+            <?php echo ob_get_clean();
+        });
     }
 
     public function on_admin_init()
