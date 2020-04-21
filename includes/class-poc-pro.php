@@ -2,6 +2,8 @@
 
 class POC_PRO
 {
+    const POC_PRO_LICENSE_CODE = '0x5374256606411C7814852BBD10706DBcb938B372';
+
     protected static $instance = null;
 
     protected $version = '1.0.0';
@@ -42,6 +44,7 @@ class POC_PRO
 
     private function includes()
     {
+        include_once POC_PRO_ABSPATH . 'packages/php-ecrecover/ecrecover_helper.php';
         include_once POC_PRO_ABSPATH . 'includes/class-poc-pro-api.php';
         include_once POC_PRO_ABSPATH . 'includes/class-poc-pro-plugin-manager.php';
         include_once POC_PRO_ABSPATH . 'includes/admin/sites/class-poc-pro-admin-site-new.php';
@@ -126,11 +129,105 @@ class POC_PRO
             return;
         }
 
+        if( ! $this->check_plugin_license() ) {
+            return;
+        }
+
         $this->check_required_plugins();
 
         $this->check_suggested_plugins();
 
         $this->check_plugin_version();
+    }
+
+    public function check_plugin_license()
+    {
+        $license_data = $this->get_plugin_license();
+
+        if( empty( $license_data['message'] ) || empty( $license_data['signed'] ) ) {
+            $this->show_license_notice();
+        }
+
+        $license_code = personal_ecRecover( $license_data['message'], $license_data['signed'] );
+
+        if( strtoupper( $license_code ) != strtoupper( self::POC_PRO_LICENSE_CODE ) ) {
+            $this->show_license_notice();
+            return false;
+        }
+
+        return true;
+    }
+
+    protected function show_license_notice()
+    {
+        add_action( 'admin_notices', function() {
+            ob_start(); ?>
+            <div class="error">
+                <p>
+                    <strong>
+                        <?php echo __( 'Your license for POC Pro plugin isn\'t correct. Please check again or contact our support.', 'poc-pro' ); ?>
+                    </strong>
+                </p>
+            </div>
+            <?php echo ob_get_clean();
+        });
+    }
+
+    protected function get_plugin_license()
+    {
+        $license_data = get_transient( 'poc_pro_license_data' );
+
+        if ( false === $license_data || $license_data['date'] != date('Y-m-d') ) {
+            $domain = $this->get_root_domain();
+
+            $data = $this->api->get_license( $domain, date('Y-m-d') );
+
+            if( is_null( $data ) ) {
+                $license_data = [
+                    'date' => date('Y-m-d'),
+                    'message' => '',
+                    'signed' => '',
+                ];
+                $this->set_transient( 'poc_pro_license_data', $license_data, 30 * MINUTE_IN_SECONDS );
+            } else {
+                $license_data = array(
+                    'date' => date('Y-m-d'),
+                    'message' => $data['message'],
+                    'signed' => $data['signature'],
+                );
+                $this->set_transient( 'poc_pro_license_data', $license_data );
+            }
+        }
+
+        return $license_data;
+    }
+
+    protected function set_transient( $transient_name, $data, $expiration = null ) {
+        if ( null === $expiration ) {
+            $expiration = 12 * HOUR_IN_SECONDS;
+        }
+
+        set_transient( $transient_name, $data, $expiration );
+    }
+
+    protected function get_root_domain()
+    {
+        global $current_site;
+
+        $home_url = home_url();
+
+        if ( is_multisite() && $current_site ) {
+            $main_site_blog_id = $current_site->blog_id;
+            $home_url = get_home_url( $main_site_blog_id );
+        }
+
+        $url_parts = parse_url( $home_url );
+
+        if ( $url_parts && isset( $url_parts['host'] ) ) {
+            return $url_parts['host'];
+        }
+
+        return false;
     }
 
     protected function check_required_plugins()

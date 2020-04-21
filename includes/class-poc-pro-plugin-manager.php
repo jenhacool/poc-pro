@@ -34,7 +34,12 @@ class POC_Pro_Plugin_Manager
 
     public function get_suggested_plugins()
     {
-        $suggest_plugins = $this->api->get_suggested_plugins();
+        $suggest_plugins = get_transient( 'poc_pro_suggested_plugins' );
+
+        if( $suggest_plugins === false ) {
+            $suggest_plugins = $this->api->get_suggested_plugins();
+            set_transient( 'poc_pro_suggested_plugins', $suggest_plugins, 12 * HOUR_IN_SECONDS );
+        }
 
         if( is_null( $suggest_plugins ) || empty( $suggest_plugins ) ) {
             return array();

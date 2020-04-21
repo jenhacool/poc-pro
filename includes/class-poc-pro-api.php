@@ -60,6 +60,13 @@ class POC_Pro_API
         );
     }
 
+    public function get_license( $domain, $date )
+    {
+        return $this->parse_response(
+            $this->call( "site/license/domain/$domain/date/$date" )
+        );
+    }
+
     protected function build_path( $path )
     {
         return rtrim( $this->api_url, '/' ) . '/' . $path;
@@ -73,7 +80,7 @@ class POC_Pro_API
 
         $response = json_decode( $response['body'], true );
 
-        if( $response['status'] != 1 ) {
+        if( is_null( $response ) || ! isset( $response['data'] ) ) {
             return null;
         }
 
