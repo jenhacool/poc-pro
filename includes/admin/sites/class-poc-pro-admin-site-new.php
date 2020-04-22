@@ -208,7 +208,7 @@ class POC_Pro_Admin_Site_New
 
         $data = $api->get_multisite_limit();
 
-        if( is_null( $data ) ) {
+        if( is_null( $data ) || ( isset( $data['message'] ) && $data['message'] === 'Cannot find server' ) ) {
             wp_die( 'Something wrong happen. Please contact supporters' );
         }
 
