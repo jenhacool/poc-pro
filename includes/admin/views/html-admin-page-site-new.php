@@ -23,6 +23,14 @@
                 </tr>
                 <tr>
                     <th scope="row">
+                        <label for="">Password</label>
+                    </th>
+                    <td>
+                        <input type="password" class="regular-text" name="user[password]">
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">
                         <label for="">Name</label>
                     </th>
                     <td>

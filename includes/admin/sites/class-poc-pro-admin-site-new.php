@@ -58,7 +58,12 @@ class POC_Pro_Admin_Site_New
             wp_die( __( 'Invalid email address.' ) );
         }
 
-        $password = 'N/A';
+        if( ! isset( $user_data['password'] ) ) {
+            wp_die( __( 'User password is required.' ) );
+        }
+
+        $password = $user_data['password'];
+
         $user_id  = email_exists( $email );
 
         if( ! $user_id ) {
@@ -67,8 +72,6 @@ class POC_Pro_Admin_Site_New
             if ( $user_id ) {
                 wp_die( __( 'The domain or path entered conflicts with an existing username.' ) );
             }
-
-            $password = wp_generate_password( 12, false );
 
             $user_id  = wpmu_create_user( $domain, $password, $email );
 
