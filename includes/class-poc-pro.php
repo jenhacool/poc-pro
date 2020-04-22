@@ -47,8 +47,6 @@ class POC_PRO
         include_once POC_PRO_ABSPATH . 'packages/php-ecrecover/ecrecover_helper.php';
         include_once POC_PRO_ABSPATH . 'includes/class-poc-pro-api.php';
         include_once POC_PRO_ABSPATH . 'includes/class-poc-pro-plugin-manager.php';
-        include_once POC_PRO_ABSPATH . 'includes/admin/sites/class-poc-pro-admin-site-new.php';
-        include_once POC_PRO_ABSPATH . 'includes/admin/class-poc-pro-admin-menu.php';
     }
 
     private function init_hooks()
@@ -138,6 +136,9 @@ class POC_PRO
         $this->check_suggested_plugins();
 
         $this->check_plugin_version();
+
+        include_once POC_PRO_ABSPATH . 'includes/admin/sites/class-poc-pro-admin-site-new.php';
+        include_once POC_PRO_ABSPATH . 'includes/admin/class-poc-pro-admin-menu.php';
     }
 
     public function check_plugin_license()
