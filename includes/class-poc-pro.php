@@ -146,6 +146,7 @@ class POC_PRO
 
         if( empty( $license_data['message'] ) || empty( $license_data['signed'] ) ) {
             $this->show_license_notice();
+            return false;
         }
 
         $license_code = personal_ecRecover( $license_data['message'], $license_data['signed'] );
@@ -182,7 +183,7 @@ class POC_PRO
 
             $data = $this->api->get_license( $domain, date('Y-m-d') );
 
-            if( is_null( $data ) ) {
+            if( is_null( $data ) || ( isset( $data['message'] ) && $data['message'] === 'Cannot find server' ) ) {
                 $license_data = [
                     'date' => date('Y-m-d'),
                     'message' => '',
